@@ -1,12 +1,12 @@
 ---
 layout: post
 title: "Dari SAM 2 ke SAM 3: Review Paper dan Tutorial Segmentasi Gambar dan Video"
-author: "Haris"
+author: "Abdul Haris"
 date: 2026-10-21
 description: "Review paper SAM 2 (ICLR 2025) dan SAM 3 (2025), ditambah tutorial SAM 2.1 di Google Colab, plus ide riset untuk tesis."
 ---
 
-> Catatan mata kuliah **Advanced Computer Vision**, Magister Teknologi Informasi.
+> Catatan mata kuliah **Advanced Computer Vision**, oleh **Abdul Haris**, mahasiswa S2 TI UNPAM.
 > Ditulis untuk teman-teman mahasiswa S2 yang butuh gambaran cepat tentang *foundation model* segmentasi dan ingin langsung mencobanya.
 
 ## Daftar isi
