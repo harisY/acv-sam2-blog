@@ -1,0 +1,14 @@
+title: Catatan Advanced Computer Vision
+description: Review paper dan tutorial Computer Vision tingkat lanjut oleh mahasiswa S2 IT.
+lang: id
+theme: minima
+
+# Untuk project page (https://USERNAME.github.io/acv-sam2-blog/) isi baseurl dengan "/acv-sam2-blog".
+# Untuk repo bernama USERNAME.github.io, biarkan kosong.
+baseurl: "/acv-sam2-blog"
+url: "https://harisy.github.io"   # username ditulis huruf kecil semua
+
+markdown: kramdown
+
+exclude:
+  - PANDUAN-PUBLISH.md
