@@ -34,7 +34,7 @@ Paper SAM 2 dipresentasikan di **ICLR 2025** (sesi oral). Untuk SAM 3 saya meruj
 
 ## SAM 2: ketika segmentasi belajar mengingat
 
-SAM pertama bekerja pada satu gambar. Kalau kamu ingin melacak sebuah objek di video, kamu harus mengulang prosesnya di setiap frame. Lambat, dan hasilnya sering tidak konsisten dari frame ke frame.
+SAM pertama bekerja pada satu gambar. Kalau kamu ingin melacak sebuah objek di video, kamu harus mengulang prosesnya di setiap frame. Prosesnya bisa lambat, dan hasilnya mudah tidak konsisten dari frame ke frame.
 
 Tim Meta (Ravi dkk., 2025) menjawabnya dengan tiga kontribusi.
 
@@ -53,7 +53,7 @@ Untuk setiap frame, alurnya begini:
 1. **Image encoder** (Hiera, dilatih awal dengan MAE) mengubah frame menjadi fitur.
 2. **Memory attention** membuat fitur itu “melihat” memori dari frame-frame sebelumnya. Ini bagian terpentingnya.
 3. **Mask decoder** menggabungkan fitur dan prompt, lalu menghasilkan mask. Ada tambahan *head* yang memprediksi apakah objek **sedang tidak terlihat** (tertutup).
-4. **Memory encoder** mengemas mask yang baru jadi menjadi memori, lalu disimpan di **memory bank**: antrean beberapa frame terakhir, frame yang pernah diberi prompt, dan *object pointer* yang membawa informasi semantik objek.
+4. **Memory encoder** mengemas mask yang baru saja dihasilkan menjadi memori, lalu disimpan di **memory bank**: antrean beberapa frame terakhir, frame yang pernah diberi prompt, dan *object pointer* yang membawa informasi semantik objek.
 
 Karena ada memori, objek yang sempat tertutup lalu muncul lagi bisa tetap dikenali. SAM pertama tidak punya kemampuan itu.
 
@@ -73,8 +73,8 @@ Hasil akhirnya, **SA-V**, berisi 50,9 ribu video, 642,6 ribu masklet, dan 35,5 j
 
 Menurut penulis (semua angka berikut diambil dari paper):
 
-- **Gambar:** SAM 2 sekitar **6 kali lebih cepat** daripada SAM (130,1 vs 21,7 FPS di A100, batch 10 gambar), dengan akurasi sedikit lebih baik (mIoU 1 klik pada 23 dataset: 58,9 vs 58,1).
-- **Video:** dengan prompt 3 klik di frame pertama pada 17 dataset zero-shot, SAM 2 mencapai **75,3 J&F**, mengungguli baseline SAM + Cutie (70,1) dan SAM + XMem++ (68,4). Secara umum penulis mengklaim akurasi lebih baik dengan interaksi sekitar **3 kali lebih sedikit**.
+- **Gambar:** SAM 2 sekitar **6 kali lebih cepat** daripada SAM (130,1 vs 21,7 FPS di A100, batch 10 gambar), dengan akurasi sedikit lebih baik (mIoU 1 klik pada 23 dataset, dengan data latih yang sama, SA-1B: 58,9 vs 58,1).
+- **Video:** dengan prompt 3 klik di frame pertama pada 17 dataset zero-shot, SAM 2 (varian B+) mencapai **75,3 J&F**, mengungguli baseline SAM + Cutie (70,1) dan SAM + XMem++ (68,4). Secara umum penulis mengklaim akurasi lebih baik dengan interaksi sekitar **3 kali lebih sedikit**.
 - **Kecepatan video:** 43,8 FPS (varian B+) dan 30,2 FPS (varian L) di satu GPU A100.
 
 ### Yang tidak dipamerkan di abstrak
@@ -98,7 +98,7 @@ Setelah paper terbit, Meta merilis **SAM 2.1** (30 September 2024) dengan checkp
 - `hiera_base_plus`: 80,8 juta, 64,1 FPS, 78,2 J&F
 - `hiera_large`: 224,4 juta, 39,5 FPS, 79,5 J&F
 
-Angka FPS ini diukur dengan pengaturan berbeda dari FPS di paper, jadi jangan dibandingkan langsung. Yang penting: `tiny` sudah cukup bagus untuk belajar dan ringan sekali.
+Angka FPS ini diukur dengan pengaturan berbeda dari FPS di paper, jadi jangan dibandingkan langsung. Untuk belajar dan bereksperimen, `tiny` sudah cukup dan paling ringan.
 
 ## SAM 3: dari “ini objeknya” menjadi “cari semua mobil merah”
 
@@ -121,7 +121,7 @@ Pada 27 Maret 2026 Meta juga merilis **SAM 3.1 (Object Multiplex)**, yang memaka
 
 **SAM 2.1** terbuka (lisensi Apache 2.0), butuh Python 3.10+ dan PyTorch 2.5.1+, dan paling kecil hanya puluhan juta parameter. **SAM 3** punya lisensi SAM License, butuh Python 3.12+, PyTorch 2.7+, dan CUDA 12.6+, dan **checkpoint-nya harus diminta aksesnya** di Hugging Face.
 
-Karena itu tutorial di bawah memakai **SAM 2.1**: bisa dijalankan siapa saja, di Colab gratis sekalipun. Tracker SAM 3 mewarisi arsitektur SAM 2, jadi yang kamu pelajari tetap berguna. Kalau kamu sudah punya akses SAM 3, ikuti README resminya untuk lanjut.
+Karena itu tutorial di bawah memakai **SAM 2.1**: tanpa permintaan akses, dan cukup ringan untuk GPU Colab gratis. Tracker SAM 3 mewarisi arsitektur SAM 2, jadi yang kamu pelajari tetap berguna. Kalau kamu sudah punya akses SAM 3, ikuti README resminya untuk lanjut.
 
 ## Tutorial: SAM 2.1 dalam lima langkah
 
@@ -129,11 +129,15 @@ Notebook lengkapnya ada di repositori ini, dan bisa dibuka langsung di Colab (pi
 
 [![Buka di Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/harisY/acv-sam2-blog/blob/main/notebook/sam2_tutorial.ipynb)
 
-**Langkah 1: instal dan unduh checkpoint.**
+**Langkah 1: instal, lalu unduh checkpoint dan contoh data** (gambar truk dan klip video `bedroom` dari repositori resmi).
 
 ```python
 !pip install -q "git+https://github.com/facebookresearch/sam2.git"
+!mkdir -p checkpoints
 !wget -q -P checkpoints https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_tiny.pt
+!wget -q -O truck.jpg https://raw.githubusercontent.com/facebookresearch/sam2/main/notebooks/images/truck.jpg
+!wget -q -O bedroom.zip https://dl.fbaipublicfiles.com/segment_anything_2/assets/bedroom.zip
+!unzip -q -o bedroom.zip
 ```
 
 **Langkah 2: muat model.**
@@ -156,27 +160,27 @@ predictor = SAM2ImagePredictor(build_sam2(model_cfg, checkpoint, device=device))
 import numpy as np
 from PIL import Image
 
-image = np.array(Image.open("gambar.jpg").convert("RGB"))
+image = np.array(Image.open("truck.jpg").convert("RGB"))
 predictor.set_image(image)
 
 masks, scores, _ = predictor.predict(
-    point_coords=np.array([[500, 375]]),   # (x, y) piksel yang diklik
+    point_coords=np.array([[500, 375]]),   # (x, y) piksel yang diklik (kaca jendela truk)
     point_labels=np.array([1]),            # 1 = objek, 0 = latar
     multimask_output=True,                 # tiga kandidat mask
 )
 ```
 
-**Langkah 4: lacak objek di video.** Ubah video menjadi frame JPEG dulu (`ffmpeg -i video.mp4 -q:v 2 -start_number 0 frames/%05d.jpg`), lalu:
+**Langkah 4: lacak objek di video.** Kode ini memakai folder frame JPEG `bedroom` dari langkah 1. Untuk videomu sendiri, ubah dulu menjadi frame dengan `ffmpeg -i video.mp4 -q:v 2 -start_number 0 frames/%05d.jpg`, lalu ganti `video_path` dan koordinat kotaknya.
 
 ```python
 from sam2.build_sam import build_sam2_video_predictor
 
 video_predictor = build_sam2_video_predictor(model_cfg, checkpoint, device=device)
-state = video_predictor.init_state(video_path="frames")
+state = video_predictor.init_state(video_path="bedroom")
 
 video_predictor.add_new_points_or_box(
     inference_state=state, frame_idx=0, obj_id=1,
-    box=np.array([340, 10, 540, 470], dtype=np.float32),   # (x1, y1, x2, y2) di sekeliling objek
+    box=np.array([340, 10, 540, 470], dtype=np.float32),   # (x1, y1, x2, y2) di sekeliling anak perempuan
 )
 
 hasil = {}
@@ -184,17 +188,17 @@ for frame_idx, obj_ids, mask_logits in video_predictor.propagate_in_video(state)
     hasil[frame_idx] = (mask_logits[0] > 0.0).cpu().numpy()
 ```
 
-**Langkah 5: bereksperimen.** Notebook menyertakan klip contoh `bedroom` dari repositori resmi supaya kamu bisa langsung mencoba tanpa menyiapkan video sendiri.
+**Langkah 5: bereksperimen.** Notebook di repositori sudah menyatukan semua langkah di atas, lengkap dengan visualisasi hasilnya.
 
 ### Apa yang saya temukan saat menjalankannya
 
-Saya menjalankan kode ini di mesin tanpa GPU (CPU saja, PyTorch 2.14, model `tiny`), pada gambar `truck.jpg` dan klip `bedroom` dari repositori resmi.
+Saya menjalankan kode ini di komputer lokal tanpa GPU (CPU saja, PyTorch 2.14, model `tiny`), bukan di Colab, pada gambar `truck.jpg` dan klip `bedroom` dari repositori resmi. Karena itu angka waktu di bawah tidak mewakili Colab.
 
 **Satu klik, tiga kemungkinan jawaban.**
 
 ![Tiga kandidat mask SAM 2.1 untuk satu klik pada jendela truk]({{ '/assets/img/hasil-gambar.png' | relative_url }})
 
-Saya mengklik kaca jendela truk. Model mengembalikan tiga kandidat dengan skor 0,952, 0,493, dan 0,042: sebagian kaca, seluruh jendela, dan hampir seluruh badan truk. Ketiganya masuk akal, karena satu titik memang **ambigu**: kamu menunjuk bagian, benda, atau benda induknya?
+Saya mengklik kaca jendela truk. Model mengembalikan tiga kandidat dengan skor 0,952, 0,493, dan 0,042: sebagian jendela, seluruh jendela, dan hampir seluruh badan truk. Ketiganya masuk akal, karena satu titik memang **ambigu**: kamu menunjuk bagian, benda, atau benda induknya?
 
 Yang menarik, skor tertinggi tidak selalu sama dengan yang kamu maksud. Skor mencerminkan keyakinan model terhadap kualitas mask, bukan niatmu.
 
@@ -206,10 +210,10 @@ Satu kotak di frame pertama cukup untuk melacak anak perempuan di seluruh 200 fr
 
 **Dua catatan praktis:**
 
-- **Klik vs kotak.** Di frame pertama klip ini, satu klik di badan anak hanya menghasilkan sebagian pakaian, bukan seluruh orang. Kotak langsung menghasilkan mask utuh. Untuk objek berbentuk rumit, pakai kotak atau beberapa klik.
-- **Kecepatan.** Di CPU, melacak 200 frame membutuhkan sekitar 12 sampai 21 menit pada dua kali percobaan saya (sekitar 3,5 sampai 6 detik per frame). Angka puluhan FPS di paper diukur di GPU A100, jadi jangan dibandingkan langsung. Di Colab dengan GPU T4 jauh lebih cepat.
+- **Klik vs kotak.** Pada beberapa titik klik yang saya coba di frame pertama klip ini, hasilnya hanya sebagian pakaian atau tubuh, atau malah meluas ke area besar di latar. Satu kotak langsung menghasilkan mask yang utuh. Untuk objek berbentuk rumit, pakai kotak atau beberapa klik.
+- **Kecepatan.** Di CPU, melacak 200 frame membutuhkan sekitar 12 sampai 21 menit pada dua kali percobaan saya (sekitar 3,5 sampai 6,5 detik per frame). Angka puluhan FPS di paper diukur di GPU A100, jadi jangan dibandingkan langsung. Dengan GPU, waktunya umumnya jauh lebih singkat.
 
-Satu catatan jujur: ini demonstrasi kualitatif (satu gambar, satu klip, satu ukuran model), bukan evaluasi dengan metrik.
+Satu catatan jujur: ini hanya demonstrasi kualitatif (satu gambar, satu klip, satu ukuran model), bukan evaluasi dengan metrik.
 
 **Coba sendiri:** bandingkan `tiny` dengan `large`, satu klik dengan beberapa klik, dan uji objek tipis atau transparan. Itu titik lemah yang diakui paper.
 
@@ -219,10 +223,10 @@ Setiap ide di bawah lahir dari kelemahan yang tadi kita catat.
 
 1. **Adaptasi ke citra medis.** SAM dilatih di citra umum, sedangkan CT, MRI, dan USG punya kontras dan tekstur berbeda. Seberapa besar performanya turun, dan apakah *fine-tuning* ringan (LoRA atau *adapter*) cukup? Untuk volume 3D, setiap slice bisa diperlakukan sebagai “frame” sehingga memori SAM 2 menjaga konsistensi antarslice. Cari literatur dengan kata kunci *SAM 2 medical image segmentation*.
 2. **Citra satelit dan drone.** Objek kecil, padat, dan seragam menyulitkan model. Bandingkan prompt titik, kotak, dan teks (SAM 3) untuk memetakan bangunan atau lahan pertanian.
-3. **Efisiensi di perangkat tepi.** Varian `tiny` sudah ringan. Eksplorasi kuantisasi atau distilasi untuk Jetson atau ponsel, dengan metrik J&F terhadap FPS dan memori.
+3. **Efisiensi di perangkat tepi.** Varian `tiny` sudah ringan. Jajaki kuantisasi atau distilasi untuk Jetson atau ponsel, dengan metrik J&F terhadap FPS dan memori.
 4. **Objek serupa dan oklusi panjang.** Kelemahan yang diakui penulis. Uji di video lalu lintas atau olahraga, lalu usulkan modul pembeda identitas, misalnya fitur penampilan tambahan.
-5. **Anotasi semi-otomatis.** Terapkan pola data engine di domainmu: model menyarankan, manusia mengoreksi. Ukur penghematan waktunya seperti tabel fase tadi.
-6. **Evaluasi lintas jenis prompt.** Bandingkan klik, kotak, mask, dan teks secara sistematis di datasetmu. Banyak paper hanya melaporkan satu jenis prompt.
+5. **Anotasi semi-otomatis.** Terapkan pola data engine di domainmu: model menyarankan, manusia mengoreksi. Ukur penghematan waktunya, seperti angka per fase tadi.
+6. **Evaluasi lintas jenis prompt.** Bandingkan klik, kotak, mask, dan teks secara sistematis di datasetmu, lalu lihat jenis prompt mana yang paling efisien untuk domain tersebut.
 
 Apa pun yang kamu pilih, mulai dari **baseline zero-shot** (tanpa pelatihan ulang) untuk melihat seberapa besar celahnya.
 
@@ -230,7 +234,7 @@ Apa pun yang kamu pilih, mulai dari **baseline zero-shot** (tanpa pelatihan ulan
 
 SAM 2 menunjukkan bahwa satu model bisa menangani gambar dan video dengan memori yang sederhana. SAM 3 menunjukkan arah berikutnya: dari “tunjuk objeknya” menjadi “sebutkan konsepnya”. Arah ini penting buat kita yang sedang riset, karena segmentasi jadi lebih mudah dipakai tanpa data berlabel dalam jumlah besar.
 
-Tapi celahnya masih terbuka lebar: oklusi panjang, objek kembar, dan pergeseran domain. Di situlah ruang kontribusi tesismu.
+Namun celahnya masih terbuka lebar: oklusi panjang, objek kembar, dan pergeseran domain. Di situlah ruang kontribusi tesismu.
 
 Kalau kamu mencoba salah satu ide di atas, atau menemukan kesalahan di tulisan ini, kabari saya lewat *issue* di repositori. Selamat bereksperimen!
 

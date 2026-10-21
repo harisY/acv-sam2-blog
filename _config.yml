@@ -11,4 +11,4 @@ url: "https://harisy.github.io"   # username ditulis huruf kecil semua
 markdown: kramdown
 
 exclude:
-  - PANDUAN-PUBLISH.md
+  - README.md
