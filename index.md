@@ -3,7 +3,7 @@ layout: post
 title: "Dari “Klik Objeknya” ke “Sebut Namanya”: Perjalanan SAM 2 menuju SAM 3"
 author: "Abdul Haris"
 date: 2026-10-21
-description: "Review paper SAM 2 (ICLR 2025) dan SAM 3, lengkap dengan tutorial yang bisa kamu jalankan sendiri dan ide riset untuk tesis."
+description: "Review kritis paper SAM 2 (ICLR 2025) dan SAM 3, lengkap dengan tutorial yang bisa kamu jalankan sendiri dan ide riset untuk tesis."
 ---
 
 *Review paper, tutorial praktik, dan ide riset untuk teman-teman S2 yang sedang mencari topik. Ditulis oleh **Abdul Haris**, mahasiswa S2 TI UNPAM, untuk mata kuliah Advanced Computer Vision.*
@@ -14,7 +14,7 @@ description: "Review paper SAM 2 (ICLR 2025) dan SAM 3, lengkap dengan tutorial 
 
 - **SAM 2** membuat segmentasi “klik apa saja” yang dulu hanya untuk gambar bisa bekerja di **video**, berkat memori antarframe.
 - **SAM 3** melangkah lebih jauh: kamu tidak perlu menunjuk objek. Cukup **sebut namanya**, dan model menemukan semua yang cocok.
-- Ada **tutorial yang bisa kamu jalankan sendiri** di bawah, plus **enam ide riset** untuk tesis.
+- Di bawahnya ada **analisis kritis** (apa yang sebenarnya penting menurut ablation, dan di mana klaimnya perlu dicurigai), **tutorial yang bisa kamu jalankan sendiri**, dan **enam ide riset** untuk tesis.
 
 ---
 
@@ -100,6 +100,39 @@ Setelah paper terbit, Meta merilis **SAM 2.1** (30 September 2024) dengan checkp
 
 Angka FPS ini diukur dengan pengaturan berbeda dari FPS di paper, jadi jangan dibandingkan langsung. Untuk belajar dan bereksperimen, `tiny` sudah cukup dan paling ringan.
 
+## Membedah SAM 2: apa yang sebenarnya penting?
+
+Sejauh ini kita membahas *apa* yang dibuat SAM 2. Sekarang *bagaimana* ia dilatih, dan komponen mana yang benar-benar berpengaruh. Bagian ini saya baca dari lampiran paper (versi HTML arXiv), karena di situlah detail yang jarang muncul di ringkasan.
+
+### Cara melatihnya
+
+- **Dua tahap.** Pra-latih dulu pada gambar SA-1B, lalu latih bersama pada gambar dan video.
+- **Interaksi manusia disimulasikan.** Model dilatih pada urutan 8 frame, dan sampai 2 frame di antaranya diberi klik koreksi yang diambil dari mask sebenarnya dan dari kesalahan prediksi model sendiri. Prompt awalnya berupa mask (50%), klik positif (25%), atau kotak (25%). Karena itulah satu model bisa menerima ketiga jenis prompt.
+- **Tiga loss.** *Focal* dan *dice* untuk mask (bobot 20:1), L1 untuk prediksi skor IoU, dan *cross-entropy* untuk prediksi oklusi.
+- **Biayanya besar.** Model card di paper menyebut pelatihan model rilis memakai 256 GPU A100 selama 108 jam, kira-kira 12 ribu kWh listrik. Artinya, mereplikasi pelatihan dari nol bukan pekerjaan mahasiswa. Yang realistis untuk tesis: inferensi, *fine-tuning* ringan, atau evaluasi.
+
+### Hasil ablation: data lebih menentukan daripada arsitektur
+
+Paper punya bagian ablation di lampiran. Ablation dijalankan dengan resolusi lebih rendah (512) dan data lebih kecil, jadi angkanya tidak sama dengan model akhir. Pola yang muncul cukup jelas:
+
+- **Data engine paling berpengaruh.** Model yang hanya dilatih pada dataset VOS yang sudah ada lemah di benchmark zero-shot. Menambahkan data hasil data engine menaikkan rata-rata sekitar 12 poin. Penulis sendiri menyimpulkan bahwa keragaman dan skala data adalah faktor terpenting.
+- **Yang sulit lebih berharga.** Dengan jumlah data yang sama (50 ribu masklet), memilih masklet yang paling banyak dikoreksi anotator memberi 66,2 J&F di SA-V val, dibanding 63,7 untuk pilihan acak. Seluruh 190 ribu masklet manual memberi 69,9. Contoh yang sulit memberi sinyal belajar lebih banyak.
+- **Arsitektur relatif tidak sensitif.** Jumlah frame dalam memory bank (4, 6, atau 8) hampir tidak mengubah hasil (68,6; 68,3; 69,0). Rancangan memorinya terlihat cukup kokoh.
+- **Object pointer terbukti membantu.** Menurut tabel ablation, tanpa object pointer SA-V val turun dari 68,3 ke 64,5 dan LVOSv2 dari 71,6 ke 67,0.
+- **Ukuran encoder tidak sepenuhnya monoton.** Pada rata-rata zero-shot, urutannya masuk akal (S 69,4; B+ 70,7; L 71,9), tetapi pada SA-V val B+ justru unggul dari L pada setup ablation itu. Karena B+ lebih cepat, ia dipakai sebagai varian bawaan.
+
+> **Untuk risetmu:** kalau data dan arsitektur sama-sama bisa diubah, mulailah dari **data**. Memilih contoh yang tepat sering lebih berdampak daripada mengubah arsitektur.
+
+## Membaca hasil SAM 2 dengan kritis
+
+Paper ini kuat, tetapi ada beberapa hal yang sebaiknya kamu waspadai sebelum mengutipnya di tesis. Beberapa poin di bawah adalah **pembacaan saya sendiri**, bukan klaim penulis.
+
+1. **Baseline “3× lebih sedikit interaksi” dibuat penulis.** Pembandingnya adalah gabungan SAM dengan model VOS (SAM + Cutie, SAM + XMem++). Itu wajar, tetapi bukan sistem interaktif yang dirancang khusus. Saat dibandingkan dengan sistem interaktif lain di DAVIS, selisihnya jauh lebih tipis: menurut tabel lampiran, SAM 2 dengan klik mencapai AUC J&F 0,86, sementara MiVOS dengan coretan 0,87 dan CiVOS 0,83. Penulis sendiri mencatat bahwa klik pertama SAM 2 sering hanya mengambil bagian objek, yang menekan skornya.
+2. **SA-V dibuat dengan SAM 2 di dalam loop anotasi.** Menurut saya ini membuka potensi bias: mask referensi mungkin cenderung mengikuti “gaya” SAM 2. Ini kewaspadaan, bukan bukti kecurangan. Bandingkan juga di dataset yang anotasinya tidak melibatkan SAM 2.
+3. **Hati-hati dengan label “zero-shot”.** Paper melaporkan beberapa campuran data latih. Varian yang menyertakan dataset VOS terbuka (DAVIS, MOSE, YouTubeVOS) tentu tidak zero-shot pada dataset itu, sedangkan model rilis disebut memakai campuran tanpa mereka. Periksa tiap tabel untuk tahu varian mana yang sedang dibandingkan.
+4. **Satu klik mengukur ambiguitas, bukan kualitas segmentasi.** Penulis melaporkan selisih pada Ego-Exo4D (mask orang): dengan satu klik, skor laki-laki 81,9 dan perempuan 75,1, tetapi selisihnya menyempit jadi 94,3 vs 92,7 kalau hanya dihitung klip yang tersegmentasi benar. Penjelasan mereka: model sering memprediksi *bagian* tubuh, bukan *orangnya*. Persis fenomena yang saya temui di percobaan truk dan anak di bawah. Analisis fairness ini juga baru satu dataset (orang).
+5. **Replikasi di luar jangkauan.** Seperti dibahas di atas, pelatihan butuh ratusan GPU. Itu membatasi siapa yang bisa memeriksa klaimnya secara independen.
+
 ## SAM 3: dari “ini objeknya” menjadi “cari semua mobil merah”
 
 Ada satu hal yang mengganjal di SAM 1 dan 2: kamu harus **menunjuk satu objek**. Padahal sering kali kebutuhan kita lain: “tandai semua bus sekolah di video ini.”
@@ -113,9 +146,27 @@ Beberapa hal teknis yang menarik, menurut paper dan README resminya:
 - Ukuran modelnya sekitar **848 juta parameter**.
 - Datanya berasal dari data engine dengan sekitar 4 juta label konsep unik (termasuk *hard negative*), disertai benchmark baru **SA-Co**.
 
-Klaim penulis: akurasi SAM 3 **dua kali lipat** sistem yang ada pada tugas ini, dan README menyebut 75 sampai 80 persen performa manusia di SA-Co. Keduanya klaim penulis dan belum saya verifikasi sendiri.
-
 Pada 27 Maret 2026 Meta juga merilis **SAM 3.1 (Object Multiplex)**, yang memakai memori bersama untuk melacak banyak objek sekaligus dan menurut README lebih cepat tanpa mengorbankan akurasi. Dari pembacaan saya, ini menyasar salah satu kelemahan SAM 2 tadi: objek yang diproses sendiri-sendiri.
+
+### Di balik klaim SAM 3
+
+Paper SAM 3 mengklaim akurasi dua kali lipat sistem yang ada. Mari kita lihat angkanya, ablation-nya, dan batasnya. Semua angka berikut dari tabel paper (versi HTML arXiv) dan belum saya verifikasi sendiri.
+
+**Hasil.** Pada SA-Co/Gold (gambar, prompt teks), SAM 3 mendapat cgF1 **54,1**. Pembanding terkuat, OWLv2⋆, mendapat 24,6, lalu DINO-X 21,3 dan Gemini 2.5 13,0, sedangkan manusia 72,8. Itu sekitar 74% performa manusia dan lebih dari dua kali baseline terkuat, sesuai klaim penulis. (README menyebut 75 sampai 80 persen untuk SA-Co, jadi angkanya tergantung subset yang dipakai.) Pada video SA-V, SAM 3 mendapat 30,3 cgF1 dan 58,0 pHOTA, dibanding manusia 53,1 dan 70,5. Penulis juga melaporkan satu gambar dengan 100+ objek diproses dalam sekitar 30 ms di GPU H200.
+
+**Apa yang ternyata penting (ablation):**
+
+- **Presence head:** menaikkan cgF1 dari 50,7 ke 52,2 (+1,5). Alasan penulis: memaksa tiap query memahami konteks global justru kontraproduktif, jadi pertanyaan “apakah konsepnya ada?” dipisahkan dari “di mana?”.
+- **Hard negative:** dari 0 ke 30 contoh negatif per gambar, cgF1 naik dari 28,3 ke 43,0. Mengajari model apa yang *bukan* konsepnya sangat berpengaruh.
+- **Sumber data:** data eksternal saja 23,7, ditambah data sintetis 32,8, ditambah data berkualitas tinggi yang diverifikasi 47,4. Data bersih dan terverifikasi memberi lonjakan terbesar, dan verifikator AI menutup kira-kira setengah selisih dengan verifikator manusia.
+
+Polanya sama dengan SAM 2: **kualitas dan strategi data lebih menentukan daripada trik arsitektur.**
+
+**Pembacaan kritis saya:**
+
+- **Benchmark dan model dibuat tim yang sama.** SA-Co dirancang bersama data engine SAM 3, jadi baca angkanya sebagai kinerja dalam kondisi yang mereka rancang. Evaluasi pihak ketiga akan sangat berharga.
+- **Batas yang diakui penulis:** konsep di luar domain latihan sulit digeneralisasi (perlu tambahan pelatihan), dan teks dibatasi pada frasa kata benda sederhana. Untuk kalimat acuan yang panjang atau butuh penalaran, mereka menggabungkannya dengan model bahasa multimodal.
+- **Angka di paper tidak selalu seragam.** Beberapa angka (misalnya ukuran dataset atau AP di LVIS) sedikit berbeda antara teks pengantar dan tabel. Kalau kamu mengutipnya, ambil dari tabel dan cek ulang.
 
 ### SAM 2 atau SAM 3, mana yang dipakai?
 
@@ -226,7 +277,7 @@ Setiap ide di bawah lahir dari kelemahan yang tadi kita catat.
 3. **Efisiensi di perangkat tepi.** Varian `tiny` sudah ringan. Jajaki kuantisasi atau distilasi untuk Jetson atau ponsel, dengan metrik J&F terhadap FPS dan memori.
 4. **Objek serupa dan oklusi panjang.** Kelemahan yang diakui penulis. Uji di video lalu lintas atau olahraga, lalu usulkan modul pembeda identitas, misalnya fitur penampilan tambahan.
 5. **Anotasi semi-otomatis.** Terapkan pola data engine di domainmu: model menyarankan, manusia mengoreksi. Ukur penghematan waktunya, seperti angka per fase tadi.
-6. **Evaluasi lintas jenis prompt.** Bandingkan klik, kotak, mask, dan teks secara sistematis di datasetmu, lalu lihat jenis prompt mana yang paling efisien untuk domain tersebut.
+6. **Evaluasi lintas jenis prompt.** Bandingkan klik, kotak, mask, dan teks secara sistematis di datasetmu, lalu lihat jenis prompt mana yang paling efisien untuk domain tersebut. Tambahkan juga dataset yang anotasinya tidak melibatkan SAM, untuk menguji potensi bias yang dibahas di atas.
 
 Apa pun yang kamu pilih, mulai dari **baseline zero-shot** (tanpa pelatihan ulang) untuk melihat seberapa besar celahnya.
 
@@ -247,4 +298,4 @@ Kalau kamu mencoba salah satu ide di atas, atau menemukan kesalahan di tulisan i
 3. Meta AI (facebookresearch), repositori resmi SAM 2. <https://github.com/facebookresearch/sam2>
 4. Meta AI (facebookresearch), repositori resmi SAM 3. <https://github.com/facebookresearch/sam3>
 
-*Semua angka diambil dari sumber di atas dan diparafrase. Diagram arsitektur dibuat sendiri oleh penulis. Hasil percobaan berasal dari run lokal penulis.*
+*Semua angka diambil dari sumber di atas dan diparafrase. Detail pelatihan, ablation, dan hasil SAM 3 saya baca dari versi HTML arXiv, jadi **cek ulang ke paper sebelum mengutipnya** di tesis. Diagram arsitektur dibuat sendiri oleh penulis. Hasil percobaan berasal dari run lokal penulis.*
