@@ -34,3 +34,14 @@ blockquote {
 .post-content img { display: block; margin: 1.5rem auto; max-width: 100%; border-radius: 4px; }
 
 pre, code { font-size: 0.78em; }
+
+// Kartu profil penulis di bagian bawah, seperti di Medium.
+.site-footer { border-top: 1px solid #e6e6e6; margin-top: 3rem; padding: 2rem 0 3rem; }
+.author-card { display: flex; align-items: flex-start; gap: 1.2rem; }
+.author-avatar { width: 80px; height: 80px; border-radius: 50%; flex-shrink: 0; margin: 0; }
+.author-info p { margin: 0 0 0.3rem; line-height: 1.5; }
+.author-label { font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: #6b6b6b; }
+.author-name { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 1.3rem; font-weight: 700; }
+.author-bio { font-size: 0.9rem; color: #424242; }
+.author-links { font-size: 0.85rem; }
+@media (max-width: 480px) { .author-card { flex-direction: column; } }
