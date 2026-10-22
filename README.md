@@ -2,7 +2,9 @@
 
 Review paper **SAM 2** (ICLR 2025) dan **SAM 3**, tutorial praktik **SAM 2.1**, dan ide riset untuk tesis. Ditulis oleh Abdul Haris (S2 TI UNPAM) untuk mata kuliah Advanced Computer Vision.
 
-**Baca tulisannya:** https://harisy.github.io/acv-sam2-blog/
+**Tulisan ini sudah pindah** ke blog utama: https://harisy.github.io/computer-vision/2026/10/21/sam2-sam3-review-tutorial.html
+
+Alamat lama (`/acv-sam2-blog/`) otomatis mengarah ke alamat baru. Repositori ini disimpan sebagai arsip.
 
 ## Isi repositori
 
